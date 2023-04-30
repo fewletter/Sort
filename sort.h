@@ -305,7 +305,7 @@ int partition(void *base, size_t num, size_t size,
               cmp_func_t cmp_func,
               swap_func_t swap_func)
 {
-    void *pivot = base;
+    void *pivot = base + num - 1;
     
     size_t i = 0;
     for (size_t j = 0; j < num - 1; ++j) {
