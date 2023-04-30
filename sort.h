@@ -18,6 +18,10 @@ void quicksort(void *base, size_t num, size_t size,
 	    cmp_func_t cmp_func,
 	    swap_func_t swap_func);
 
+void insertsort(void *base, size_t num, size_t size,
+	    cmp_func_t cmp_func,
+	    swap_func_t swap_func);
+
 void sort_o(void *base, size_t num, size_t size,
 	    cmp_func_t cmp_func,
 	    swap_func_t swap_func);
@@ -332,6 +336,15 @@ void quicksort(void *base, size_t num, size_t size,
     quicksort(base + (pivot + 1) * size, num - pivot - 1, size, cmp_func, swap_func);
 }
 
+void insertsort(void *base, size_t num, size_t size, cmp_func_t cmp_func, swap_func_t swap_func) 
+{
+    for (size_t i = 1; i < num; ++i) {
+        for (size_t j = i; j > 0 && cmp_func(base + (j-1) * size, base + j * size) > 0; --j) {
+            swap_func(base + (j-1) * size, base + j * size, size);
+        }
+    }
+}
+
 static int slog2(size_t n)
 {
     return 31 - __builtin_clz(n | 1);
@@ -346,7 +359,10 @@ void sort_o(void *base, size_t num, size_t size,
 		.swap = swap_func,
 	};
 
-	return heapsort(base, num, size, _CMP_WRAPPER, SWAP_WRAPPER, &w);
+	if (num < 300) 
+		return insertsort(base, num, size, cmp_func, swap_func);
+	else
+	    return heapsort(base, num, size, _CMP_WRAPPER, SWAP_WRAPPER, &w);
 }
 
 #endif
