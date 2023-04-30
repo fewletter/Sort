@@ -9,10 +9,14 @@ typedef void (*swap_func_t)(void *a, void *b, int size);
 typedef int (*cmp_r_func_t)(const void *a, const void *b, const void *priv);
 typedef int (*cmp_func_t)(const void *a, const void *b);
 
-void sort_r(void *base, size_t num, size_t size,
+void heapsort(void *base, size_t num, size_t size,
 	    cmp_r_func_t cmp_func,
 	    swap_r_func_t swap_func,
 	    const void *priv);
+
+void quicksort(void *base, size_t num, size_t size,
+	    cmp_func_t cmp_func,
+	    swap_func_t swap_func);
 
 void sort_o(void *base, size_t num, size_t size,
 	    cmp_func_t cmp_func,
@@ -168,7 +172,7 @@ static void do_swap(void *a, void *b, size_t size, swap_r_func_t swap_func, cons
 		swap_words_32(a, b, size);
 	else if (swap_func == SWAP_BYTES)
 		swap_bytes(a, b, size);
-	else 
+	else
 		swap_func(a, b, (int)size, priv);
 }
 
@@ -226,7 +230,7 @@ static size_t parent(size_t i, unsigned int lsbit, size_t size)
  * O(n*n) worst-case behavior and extra memory requirements that make
  * it less suitable for kernel use.
  */
-void sort_r(void *base, size_t num, size_t size,
+void heapsort(void *base, size_t num, size_t size,
 	    cmp_r_func_t cmp_func,
 	    swap_r_func_t swap_func,
 	    const void *priv)
@@ -234,7 +238,7 @@ void sort_r(void *base, size_t num, size_t size,
 	/* pre-scale counters for performance */
 	size_t n = num * size, a = (num/2) * size;
 	const unsigned int lsbit = size & -size;  /* Used to find parent */
-	printf("%u \n", lsbit);
+	// printf("%u \n", lsbit);
 
 	if (!a)		/* num < 2 || size == 0 */
 		return;
@@ -297,6 +301,42 @@ void sort_r(void *base, size_t num, size_t size,
 	}
 }
 
+int partition(void *base, size_t num, size_t size,
+              cmp_func_t cmp_func,
+              swap_func_t swap_func)
+{
+    void *pivot = base;
+    
+    size_t i = 0;
+    for (size_t j = 0; j < num - 1; ++j) {
+        if (cmp_func(base + j * size, pivot) <= 0) {
+            swap_func(base + i * size, base + j * size, size);
+            i++;
+        }
+    }
+    
+    swap_func(base + i * size, pivot, size);
+    
+    return i;
+}
+
+void quicksort(void *base, size_t num, size_t size,
+	    cmp_func_t cmp_func,
+	    swap_func_t swap_func)
+{
+	if (num < 1)
+	    return;
+
+    int pivot = partition(base, num, size, cmp_func, swap_func);
+    quicksort(base, pivot, size, cmp_func, swap_func);
+    quicksort(base + (pivot + 1) * size, num - pivot - 1, size, cmp_func, swap_func);
+}
+
+static int slog2(size_t n)
+{
+    return 31 - __builtin_clz(n | 1);
+}
+
 void sort_o(void *base, size_t num, size_t size,
 	  cmp_func_t cmp_func,
 	  swap_func_t swap_func)
@@ -306,7 +346,7 @@ void sort_o(void *base, size_t num, size_t size,
 		.swap = swap_func,
 	};
 
-	return sort_r(base, num, size, _CMP_WRAPPER, SWAP_WRAPPER, &w);
+	return heapsort(base, num, size, _CMP_WRAPPER, SWAP_WRAPPER, &w);
 }
 
 #endif
