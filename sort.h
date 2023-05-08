@@ -305,35 +305,69 @@ void heapsort(void *base, size_t num, size_t size,
 	}
 }
 
-int partition(void *base, size_t num, size_t size,
-              cmp_func_t cmp_func,
-              swap_func_t swap_func)
+static int slog2(size_t n)
 {
-    void *pivot = base + num - 1;
-    
-    size_t i = 0;
-    for (size_t j = 0; j < num - 1; ++j) {
-        if (cmp_func(base + j * size, pivot) <= 0) {
-            swap_func(base + i * size, base + j * size, size);
-            i++;
-        }
-    }
-    
-    swap_func(base + i * size, pivot, size);
-    
-    return i;
+    return 31 - __builtin_clz(n | 1);
 }
 
-void quicksort(void *base, size_t num, size_t size,
-	    cmp_func_t cmp_func,
-	    swap_func_t swap_func)
-{
-	if (num < 1)
-	    return;
+typedef struct {
+    void *left;
+    void *right;
+} _stack;
 
-    int pivot = partition(base, num, size, cmp_func, swap_func);
-    quicksort(base, pivot, size, cmp_func, swap_func);
-    quicksort(base + (pivot + 1) * size, num - pivot - 1, size, cmp_func, swap_func);
+#define STACK_SIZE 32
+
+void quicksort(void *base, size_t num, size_t size,
+               cmp_func_t cmp_func,
+               swap_func_t swap_func)
+{
+	int stack_size = slog2(num);
+    _stack stack[32];
+	printf("%d \n", stack_size);
+    int top = -1;
+
+    void *left = base;
+    void *right = base + (num - 1) * size;
+
+    stack[++top].left = left;
+    stack[top].right = right;
+
+    while (top >= 0) {
+        right = stack[top].right;
+        left = stack[top--].left;
+
+        if (left >= right) {
+            continue;
+        }
+
+        void *pivot = left;
+        void *i = left;
+        void *j = right;
+
+        while (i < j) {
+            while (i <= right && cmp_func(i, pivot) <= 0) {
+                i += size;
+            }
+            while (j >= left && cmp_func(j, pivot) > 0) {
+                j -= size;
+            }
+            if (i < j) {
+                swap_func(i, j, size);
+            }
+        }
+
+        swap_func(pivot, j, size);
+
+        if (j - size > left) {
+            stack[++top].left = left;
+            stack[top].right = j - size;
+        }
+
+        if (j + size < right) {
+            stack[++top].left = j + size;
+            stack[top].right = right;
+        }
+    }
 }
 
 void insertsort(void *base, size_t num, size_t size, cmp_func_t cmp_func, swap_func_t swap_func) 
@@ -345,11 +379,6 @@ void insertsort(void *base, size_t num, size_t size, cmp_func_t cmp_func, swap_f
     }
 }
 
-static int slog2(size_t n)
-{
-    return 31 - __builtin_clz(n | 1);
-}
-
 void sort_o(void *base, size_t num, size_t size,
 	  cmp_func_t cmp_func,
 	  swap_func_t swap_func)
@@ -359,7 +388,7 @@ void sort_o(void *base, size_t num, size_t size,
 		.swap = swap_func,
 	};
 
-	if (num < 300) 
+	if (num <= 300) 
 		return insertsort(base, num, size, cmp_func, swap_func);
 	else
 	    return heapsort(base, num, size, _CMP_WRAPPER, SWAP_WRAPPER, &w);
